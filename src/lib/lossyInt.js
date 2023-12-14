@@ -2,6 +2,7 @@
 class LossyInt {
     constructor(value) {
         this.precision = 2;
+        this.significanceThreshold = 6; 
 
         if (typeof value === "string") {
             //If the string contains an e, it is in scientific notation
@@ -19,24 +20,18 @@ class LossyInt {
         this.truncate = (value1, value2) => {
             //Truncate either of the values so that the resulting exponent is the same
             if (value1.exponent > value2.exponent) {
-                if (value1.exponent - value2.exponent > 6) {
+                if (value1.exponent - value2.exponent > this.significanceThreshold) {
                     return [value1, new LossyInt(0)];
                 }
                 //Truncate other.value to match this.exponent
-                let valueString = value2.value.toString();
-                if (valueString.length < 6) {
-                    //Pad with 0s until it is 6 digits long
-                    valueString = valueString.padStart(6, "0")
-                }
-                const truncatedValue = valueString.slice(0, 6 - (value1.exponent - value2.exponent));
-                console.log(truncatedValue)
+                const truncatedValue = value2.value / Math.pow(10, value1.exponent - value2.exponent);
                 value2.set(truncatedValue, value1.exponent);
             } else if (value1.exponent < value2.exponent) {
-                if (value2.exponent - value1.exponent > 6) {
+                if (value2.exponent - value1.exponent > this.significanceThreshold) {
                     return [new LossyInt(0), value2];
                 }
                 //Truncate this.value to match other.exponent
-                const truncatedValue = value1.value.toString().slice(0, 6 - (value2.exponent - value1.exponent));
+                const truncatedValue = value1.value / Math.pow(10, value2.exponent - value1.exponent);
                 value1.set(truncatedValue, value2.exponent);
             } 
             return [value1, value2];
@@ -53,12 +48,9 @@ class LossyInt {
     }
 
     assign(value) {
-        const length = value.toString().length;
-        if (length > 6) {
-            this.set(value.toString().slice(0, 6), length - 6);
-        } else {
-            this.set(value, 0);
-        }
+        const length = value.toString().split(".")[0].length;
+        const retValue = value / Math.pow(10, length - 1);
+        this.set(retValue, length - 1);
     }
 
     copy() {
@@ -76,13 +68,22 @@ class LossyInt {
 
 
         const [value1, value2] = this.truncate(this, other);
-        const newValue = value1.value + value2.value;
-        const newExponent = value1.exponent;
-        if (newValue.toString().length > 6) {
-            this.set(newValue.toString().slice(0, 6), newExponent + 1);
-        } else {
-            this.set(newValue, newExponent);
+        let newValue = value1.value + value2.value;
+        let newExponent = value1.exponent;
+        if (newValue >= 10) { 
+            const length = newValue.toString().split(".")[0].length;
+            newValue = newValue / Math.pow(10, length - 1);
+            newExponent += length - 1;
+        } else if (newValue < 1) {
+            if (newValue < 0) {
+                return this //TODO: Handle negative numbers
+            }
+            while (newValue < 1) {
+                newValue *= 10;
+                newExponent--;
+            }
         }
+        this.set(newValue, newExponent);
         return this
     }
 
@@ -92,13 +93,14 @@ class LossyInt {
         } else {
             other = other.copy();
         }
-        const newValue = this.value * other.value;
-        const newExponent = this.exponent + other.exponent;
-        if (newValue.toString().length > 6) {
-            this.set(newValue.toString().slice(0, 6), newExponent + 1);
-        } else {
-            this.set(newValue, newExponent);
+        let newValue = this.value * other.value;
+        let newExponent = this.exponent + other.exponent;
+        if (newValue >= 10) { 
+            const length = newValue.toString().split(".")[0].length;
+            newValue = newValue / Math.pow(10, length - 1);
+            newExponent += length - 1;
         }
+        this.set(newValue, newExponent);
         return this
     }
 
@@ -108,18 +110,41 @@ class LossyInt {
         } else {
             other = other.copy();
         }
-        console.log(this, other)
+        //If the values are small enough, just use Math.pow
+        if (this.exponent === 0 && other.exponent === 0) {
+            const calc = Math.pow(this.value, other.value);
+            if (!isNaN(calc) && !isFinite(calc)) {
+                this.assign(calc);
+                return this
+            } else {
+                //Too big, use the other method
+            }
+        }
+
+        const valueCopy = this.value;
+        const expCopy = this.exponent;
+
+        const valueOther = other.value;
+        const expOther = other.exponent;
+        
+        
         //a^b = 10^(b*log10(a))
-        const b1 = Math.log10(this.value) + this.exponent;
-        console.log(b1);
+        const b1 = Math.log10(valueCopy) + expCopy;
+        // console.log("log(" + valueCopy.toString() + ") + " + expCopy.toString() + "=", b1)
+        let resultValue = other.multiply(b1);
+        // console.log("b1 * other.value=", resultValue.value + "e" + resultValue.exponent)
 
-        let result = other.multiply(new LossyInt(b1));
-        console.log(result)
-        //Reverse log10
-        result.value = Math.pow(10, result.value);
+        //Evaluate resultValue
+        let realResultValue = resultValue.value * Math.pow(10, resultValue.exponent);
 
+        let resultExp = Math.floor(realResultValue);
+        // console.log(expOther, Math.floor(resultValue), resultExp);
 
+        // console.log(realResultValue%1)
 
+        resultValue = Math.pow(10, realResultValue % 1);
+
+        this.set(resultValue, resultExp);
 
         return this
     }
@@ -134,18 +159,40 @@ class LossyInt {
         }
 
         const tetrate = (value1, value2) => {
-            for (let i = 0; i < value2; i++) {
-                value1 = Math.pow(value1, value1);
+            let currentValue = value1.copy();
+            for (let i = 0; i < value2-1; i++) {
+                const valueCopy = value1.copy();
+                currentValue = valueCopy.exp(currentValue);
+                console.log(currentValue)
             }
-            return value1;
+            return currentValue;
         }
-        const newValue = tetrate(this.value, other.value);
-        const newExponent = tetrate(this.exponent, other.value);
-        if (newValue.toString().length > 6) {
-            this.set(newValue.toString().slice(0, 5), newExponent + 1);
+
+        const result = tetrate(this, other);
+        this.set(result.value, result.exponent);
+        
+        return this
+    }
+
+    double_tetrate(other) {
+        if (typeof other === "number") {
+            other = new LossyInt(other);
         } else {
-            this.set(newValue.toString(), newExponent);
+            other = other.copy();
         }
+
+        const double_tetrate = (value1, value2) => {
+            let currentValue = value1.copy();
+            for (let i = 0; i < value2-1; i++) {
+                const valueCopy = value1.copy();
+                currentValue = valueCopy.tetrate(currentValue);
+            }
+            return currentValue;
+        }
+
+        const result = double_tetrate(this, other);
+        this.set(result.value, result.exponent);
+        
         return this
     }
 
@@ -153,11 +200,11 @@ class LossyInt {
         if (this.exponent === 0) {
             return this.value.toString();
         }
-        let value = this.value / 100000;
+        let value = this.value;
         //Round
         value = Math.round(value * Math.pow(10, this.precision)) / Math.pow(10, this.precision);
 
-        return value.toString() + "e" + (this.exponent + 5);
+        return value.toString() + "e" + (this.exponent);
     }
 }
 

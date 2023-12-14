@@ -32,6 +32,7 @@
 			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => score = score.add(increment)}>Increment</button>
 			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => score = score.multiply(increment)}>Multiply</button>
 			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => score = score.exp(increment)}>Exponentiate</button>
+			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => score = score.tetrate(increment)}>Tetrate</button>
 		</div>
 		<div class="flex justify-center space-x-5">
 			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(1)}>+1</button>
@@ -40,6 +41,14 @@
 			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(1000)}>+1000</button>
 			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(10000)}>+10000</button>
 			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(100000)}>+100000</button>
+		</div>
+		<div class="flex justify-center space-x-5">
+			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(-1)}>-1</button>
+			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(-10)}>-10</button>
+			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(-100)}>-100</button>
+			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(-1000)}>-1000</button>
+			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(-10000)}>-10000</button>
+			<button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" on:click={() => increment = increment.add(-100000)}>-100000</button>
 		</div>
 	</div>
 </div>
